@@ -27,19 +27,31 @@ export function useProfile() {
     }
 
     try {
-      // For now, create a mock profile from user data until database is set up
-      console.log('Creating mock profile for user:', user.email);
-      const mockProfile: Profile = {
-        id: user.id,
-        email: user.email || '',
-        full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-        role: user.email === 'admin@test.com' ? 'admin' : 'user',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      setProfile(mockProfile);
+      console.log('Fetching profile for user:', user.id);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch profile',
+          variant: 'destructive',
+        });
+      } else {
+        console.log('Profile fetched successfully:', data);
+        setProfile(data);
+      }
     } catch (error: any) {
-      console.error('Error creating profile:', error);
+      console.error('Error fetching profile:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch profile',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
@@ -49,23 +61,37 @@ export function useProfile() {
     if (!user) return { error: 'User not authenticated' };
 
     try {
-      // For now, just update local state until database is set up
-      if (profile) {
-        const updatedProfile = {
-          ...profile,
+      console.log('Updating profile with:', updates);
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({
           ...updates,
           updated_at: new Date().toISOString()
-        };
-        setProfile(updatedProfile);
-        
+        })
+        .eq('id', user.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating profile:', error);
         toast({
-          title: 'Success',
-          description: 'Profile updated successfully (mock)',
+          title: 'Error',
+          description: error.message || 'Failed to update profile',
+          variant: 'destructive',
         });
+        return { error };
       }
 
-      return { data: profile, error: null };
+      console.log('Profile updated successfully:', data);
+      setProfile(data);
+      toast({
+        title: 'Success',
+        description: 'Profile updated successfully',
+      });
+
+      return { data, error: null };
     } catch (error: any) {
+      console.error('Error updating profile:', error);
       toast({
         title: 'Error',
         description: error.message || 'Failed to update profile',

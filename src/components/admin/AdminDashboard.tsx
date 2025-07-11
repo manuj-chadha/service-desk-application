@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +20,7 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useTickets } from '@/hooks/useTickets';
 import { Profile } from '@/hooks/useProfile';
 import { toast } from '@/hooks/use-toast';
 
@@ -29,89 +30,16 @@ interface AdminDashboardProps {
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, profile }) => {
-  const [tickets, setTickets] = useState([]);
-  const [users, setUsers] = useState([]);
   const [activeTab, setActiveTab] = useState('overview');
   const { signOut } = useAuth();
-
-  // Mock data for demo
-  useEffect(() => {
-    const mockTickets = [
-      {
-        id: 'T001',
-        title: 'Password Reset Request',
-        description: 'Unable to access email account, need password reset',
-        priority: 'medium',
-        category: 'Account',
-        status: 'open',
-        createdAt: new Date(Date.now() - 86400000).toISOString(),
-        updatedAt: new Date(Date.now() - 3600000).toISOString(),
-        userId: 'user1',
-        userName: 'John Doe',
-        assignedTo: null
-      },
-      {
-        id: 'T002',
-        title: 'Software Installation Issue',
-        description: 'Cannot install required software on workstation',
-        priority: 'high',
-        category: 'Software',
-        status: 'in-progress',
-        createdAt: new Date(Date.now() - 172800000).toISOString(),
-        updatedAt: new Date(Date.now() - 1800000).toISOString(),
-        userId: 'user2',
-        userName: 'Jane Smith',
-        assignedTo: 'Admin User'
-      },
-      {
-        id: 'T003',
-        title: 'Network Connectivity Problem',
-        description: 'Internet connection keeps dropping intermittently',
-        priority: 'urgent',
-        category: 'Network',
-        status: 'open',
-        createdAt: new Date(Date.now() - 259200000).toISOString(),
-        updatedAt: new Date(Date.now() - 7200000).toISOString(),
-        userId: 'user3',
-        userName: 'Mike Johnson',
-        assignedTo: null
-      }
-    ];
-
-    const mockUsers = [
-      { id: 'user1', name: 'John Doe', email: 'john@company.com', status: 'active', ticketCount: 3 },
-      { id: 'user2', name: 'Jane Smith', email: 'jane@company.com', status: 'active', ticketCount: 1 },
-      { id: 'user3', name: 'Mike Johnson', email: 'mike@company.com', status: 'active', ticketCount: 2 }
-    ];
-
-    setTickets(mockTickets);
-    setUsers(mockUsers);
-  }, []);
+  const { tickets, loading, updateTicketStatus } = useTickets();
 
   const handleUpdateTicketStatus = (ticketId: string, newStatus: string) => {
-    setTickets(prev => prev.map(ticket => 
-      ticket.id === ticketId 
-        ? { ...ticket, status: newStatus, updatedAt: new Date().toISOString() }
-        : ticket
-    ));
-    
-    toast({
-      title: "Ticket Updated",
-      description: `Ticket ${ticketId} status changed to ${newStatus}`,
-    });
+    updateTicketStatus(ticketId, newStatus);
   };
 
   const handleAssignTicket = (ticketId: string, assignee: string) => {
-    setTickets(prev => prev.map(ticket => 
-      ticket.id === ticketId 
-        ? { ...ticket, assignedTo: assignee, updatedAt: new Date().toISOString() }
-        : ticket
-    ));
-    
-    toast({
-      title: "Ticket Assigned",
-      description: `Ticket ${ticketId} assigned to ${assignee}`,
-    });
+    updateTicketStatus(ticketId, 'in-progress', assignee);
   };
 
   const getTicketStats = () => {
@@ -125,6 +53,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, profile })
   };
 
   const stats = getTicketStats();
+
+  // Mock users data - in a real app, this would come from a separate users hook
+  const mockUsers = [
+    { id: 'user1', name: 'John Doe', email: 'john@company.com', status: 'active', ticketCount: 3 },
+    { id: 'user2', name: 'Jane Smith', email: 'jane@company.com', status: 'active', ticketCount: 1 },
+    { id: 'user3', name: 'Mike Johnson', email: 'mike@company.com', status: 'active', ticketCount: 2 }
+  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -274,12 +209,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, profile })
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <AdminTicketList
-                    tickets={tickets.filter(t => t.priority === 'high' || t.priority === 'urgent')}
-                    onUpdateStatus={handleUpdateTicketStatus}
-                    onAssignTicket={handleAssignTicket}
-                    compact={true}
-                  />
+                  {loading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  ) : (
+                    <AdminTicketList
+                      tickets={tickets.filter(t => t.priority === 'high' || t.priority === 'urgent')}
+                      onUpdateStatus={handleUpdateTicketStatus}
+                      onAssignTicket={handleAssignTicket}
+                      compact={true}
+                    />
+                  )}
                 </CardContent>
               </Card>
 
@@ -292,7 +233,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, profile })
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {users.map((user) => (
+                    {mockUsers.map((user) => (
                       <div key={user.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                         <div>
                           <p className="font-medium text-foreground">{user.name}</p>
@@ -329,11 +270,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, profile })
             
             <Card>
               <CardContent className="p-6">
-                <AdminTicketList
-                  tickets={tickets}
-                  onUpdateStatus={handleUpdateTicketStatus}
-                  onAssignTicket={handleAssignTicket}
-                />
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : (
+                  <AdminTicketList
+                    tickets={tickets}
+                    onUpdateStatus={handleUpdateTicketStatus}
+                    onAssignTicket={handleAssignTicket}
+                  />
+                )}
               </CardContent>
             </Card>
           </div>
@@ -342,7 +289,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, profile })
         {activeTab === 'users' && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-foreground">User Management</h2>
-            <UserManagement users={users} />
+            <UserManagement users={mockUsers} />
           </div>
         )}
       </main>

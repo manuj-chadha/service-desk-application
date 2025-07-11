@@ -39,33 +39,39 @@ export function useTickets() {
 
     try {
       setLoading(true);
+      console.log('Fetching tickets for user:', user.id);
       
-      // For now, create mock tickets until database is set up
-      console.log('Creating mock tickets for user:', user.email);
-      const mockTickets: Ticket[] = [
-        {
-          id: 'mock-1',
-          title: 'Sample Support Ticket',
-          description: 'This is a sample ticket to demonstrate the system.',
-          status: 'open',
-          priority: 'medium',
-          category: 'General',
-          user_id: user.id,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          profiles: {
-            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-            email: user.email || ''
-          }
-        }
-      ];
-      
-      setTickets(mockTickets);
+      const { data, error } = await supabase
+        .from('tickets')
+        .select(`
+          *,
+          profiles:user_id (
+            full_name,
+            email
+          ),
+          assigned_agent:assigned_to (
+            full_name,
+            email
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching tickets:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch tickets',
+          variant: 'destructive',
+        });
+      } else {
+        console.log('Tickets fetched successfully:', data);
+        setTickets(data || []);
+      }
     } catch (error: any) {
       console.error('Error fetching tickets:', error);
       toast({
         title: 'Error',
-        description: 'Failed to fetch tickets (using mock data)',
+        description: 'Failed to fetch tickets',
         variant: 'destructive',
       });
     } finally {
@@ -82,31 +88,44 @@ export function useTickets() {
     if (!user) return { error: 'User not authenticated' };
 
     try {
-      // For now, create mock ticket until database is set up
-      const newTicket: Ticket = {
-        id: `mock-${Date.now()}`,
-        title: ticketData.title,
-        description: ticketData.description,
-        priority: ticketData.priority as 'low' | 'medium' | 'high' | 'urgent',
-        category: ticketData.category,
-        status: 'open',
-        user_id: user.id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        profiles: {
-          full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-          email: user.email || ''
-        }
-      };
+      console.log('Creating ticket with data:', ticketData);
+      const { data, error } = await supabase
+        .from('tickets')
+        .insert([
+          {
+            ...ticketData,
+            user_id: user.id,
+          }
+        ])
+        .select(`
+          *,
+          profiles:user_id (
+            full_name,
+            email
+          )
+        `)
+        .single();
 
-      setTickets(prev => [newTicket, ...prev]);
+      if (error) {
+        console.error('Error creating ticket:', error);
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to create ticket',
+          variant: 'destructive',
+        });
+        return { error };
+      }
+
+      console.log('Ticket created successfully:', data);
+      setTickets(prev => [data, ...prev]);
       toast({
         title: 'Success',
-        description: 'Ticket created successfully (mock)',
+        description: 'Ticket created successfully',
       });
 
-      return { data: newTicket, error: null };
+      return { data, error: null };
     } catch (error: any) {
+      console.error('Error creating ticket:', error);
       toast({
         title: 'Error',
         description: error.message || 'Failed to create ticket',
@@ -118,6 +137,8 @@ export function useTickets() {
 
   const updateTicketStatus = async (ticketId: string, status: string, assignedTo?: string) => {
     try {
+      console.log('Updating ticket status:', { ticketId, status, assignedTo });
+      
       const updates: any = { 
         status,
         updated_at: new Date().toISOString()
@@ -131,18 +152,44 @@ export function useTickets() {
         updates.resolved_at = new Date().toISOString();
       }
 
-      // Update local state for mock data
+      const { data, error } = await supabase
+        .from('tickets')
+        .update(updates)
+        .eq('id', ticketId)
+        .select(`
+          *,
+          profiles:user_id (
+            full_name,
+            email
+          ),
+          assigned_agent:assigned_to (
+            full_name,
+            email
+          )
+        `)
+        .single();
+
+      if (error) {
+        console.error('Error updating ticket:', error);
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to update ticket',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      console.log('Ticket updated successfully:', data);
       setTickets(prev => prev.map(ticket => 
-        ticket.id === ticketId 
-          ? { ...ticket, ...updates }
-          : ticket
+        ticket.id === ticketId ? data : ticket
       ));
 
       toast({
         title: 'Success',
-        description: 'Ticket updated successfully (mock)',
+        description: 'Ticket updated successfully',
       });
     } catch (error: any) {
+      console.error('Error updating ticket:', error);
       toast({
         title: 'Error',
         description: error.message || 'Failed to update ticket',
