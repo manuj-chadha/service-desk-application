@@ -36,17 +36,43 @@ export function useProfile() {
 
       if (error) {
         console.error('Error fetching profile:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to fetch profile',
-          variant: 'destructive',
-        });
+        // If profile doesn't exist, try to create it
+        if (error.code === 'PGRST116') {
+          console.log('Profile not found, creating new profile...');
+          const { data: newProfile, error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: user.id,
+              email: user.email || '',
+              full_name: user.user_metadata?.full_name || '',
+            })
+            .select()
+            .single();
+          
+          if (insertError) {
+            console.error('Error creating profile:', insertError);
+            toast({
+              title: 'Error',
+              description: 'Failed to create profile',
+              variant: 'destructive',
+            });
+          } else {
+            console.log('Profile created successfully:', newProfile);
+            setProfile(newProfile);
+          }
+        } else {
+          toast({
+            title: 'Error',
+            description: 'Failed to fetch profile',
+            variant: 'destructive',
+          });
+        }
       } else {
         console.log('Profile fetched successfully:', data);
         setProfile(data);
       }
     } catch (error: any) {
-      console.error('Error fetching profile:', error);
+      console.error('Error in fetchProfile:', error);
       toast({
         title: 'Error',
         description: 'Failed to fetch profile',
