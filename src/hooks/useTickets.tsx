@@ -32,25 +32,40 @@ export function useTickets() {
   const { user } = useAuth();
 
   const fetchTickets = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('tickets')
-        .select(`
-          *,
-          profiles:user_id (full_name, email),
-          assigned_agent:assigned_to (full_name, email)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setTickets(data || []);
+      
+      // For now, create mock tickets until database is set up
+      console.log('Creating mock tickets for user:', user.email);
+      const mockTickets: Ticket[] = [
+        {
+          id: 'mock-1',
+          title: 'Sample Support Ticket',
+          description: 'This is a sample ticket to demonstrate the system.',
+          status: 'open',
+          priority: 'medium',
+          category: 'General',
+          user_id: user.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          profiles: {
+            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+            email: user.email || ''
+          }
+        }
+      ];
+      
+      setTickets(mockTickets);
     } catch (error: any) {
+      console.error('Error fetching tickets:', error);
       toast({
         title: 'Error',
-        description: 'Failed to fetch tickets',
+        description: 'Failed to fetch tickets (using mock data)',
         variant: 'destructive',
       });
     } finally {
@@ -67,27 +82,30 @@ export function useTickets() {
     if (!user) return { error: 'User not authenticated' };
 
     try {
-      const { data, error } = await supabase
-        .from('tickets')
-        .insert([{
-          ...ticketData,
-          user_id: user.id,
-        }])
-        .select(`
-          *,
-          profiles:user_id (full_name, email)
-        `)
-        .single();
+      // For now, create mock ticket until database is set up
+      const newTicket: Ticket = {
+        id: `mock-${Date.now()}`,
+        title: ticketData.title,
+        description: ticketData.description,
+        priority: ticketData.priority as 'low' | 'medium' | 'high' | 'urgent',
+        category: ticketData.category,
+        status: 'open',
+        user_id: user.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        profiles: {
+          full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          email: user.email || ''
+        }
+      };
 
-      if (error) throw error;
-
-      setTickets(prev => [data, ...prev]);
+      setTickets(prev => [newTicket, ...prev]);
       toast({
         title: 'Success',
-        description: 'Ticket created successfully',
+        description: 'Ticket created successfully (mock)',
       });
 
-      return { data, error: null };
+      return { data: newTicket, error: null };
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -113,17 +131,16 @@ export function useTickets() {
         updates.resolved_at = new Date().toISOString();
       }
 
-      const { error } = await supabase
-        .from('tickets')
-        .update(updates)
-        .eq('id', ticketId);
+      // Update local state for mock data
+      setTickets(prev => prev.map(ticket => 
+        ticket.id === ticketId 
+          ? { ...ticket, ...updates }
+          : ticket
+      ));
 
-      if (error) throw error;
-
-      await fetchTickets();
       toast({
         title: 'Success',
-        description: 'Ticket updated successfully',
+        description: 'Ticket updated successfully (mock)',
       });
     } catch (error: any) {
       toast({
@@ -137,31 +154,9 @@ export function useTickets() {
   useEffect(() => {
     if (user) {
       fetchTickets();
+    } else {
+      setLoading(false);
     }
-  }, [user]);
-
-  // Set up real-time subscription
-  useEffect(() => {
-    if (!user) return;
-
-    const channel = supabase
-      .channel('tickets-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tickets'
-        },
-        () => {
-          fetchTickets();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [user]);
 
   return {

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AdminTicketList } from './AdminTicketList';
 import { UserManagement } from './UserManagement';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { 
   Settings, 
   Users, 
@@ -18,17 +19,20 @@ import {
   BarChart3,
   TrendingUp
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { Profile } from '@/hooks/useProfile';
 import { toast } from '@/hooks/use-toast';
 
 interface AdminDashboardProps {
   user: any;
-  onLogout: () => void;
+  profile: Profile;
 }
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, profile }) => {
   const [tickets, setTickets] = useState([]);
   const [users, setUsers] = useState([]);
   const [activeTab, setActiveTab] = useState('overview');
+  const { signOut } = useAuth();
 
   // Mock data for demo
   useEffect(() => {
@@ -123,29 +127,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }
   const stats = getTicketStats();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Admin Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-card shadow-sm border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <div className="bg-red-600 w-8 h-8 rounded-lg flex items-center justify-center mr-3">
-                <Settings className="h-5 w-5 text-white" />
+              <div className="bg-destructive w-8 h-8 rounded-lg flex items-center justify-center mr-3">
+                <Settings className="h-5 w-5 text-destructive-foreground" />
               </div>
-              <h1 className="text-xl font-semibold text-gray-900">Admin Dashboard</h1>
+              <h1 className="text-xl font-semibold text-foreground">Admin Dashboard</h1>
             </div>
             
             <div className="flex items-center gap-4">
-              <Badge className="bg-red-100 text-red-800 border-red-200">Administrator</Badge>
-              <div className="flex items-center gap-2 text-gray-700">
+              <ThemeToggle />
+              <Badge variant="destructive">Administrator</Badge>
+              <div className="flex items-center gap-2 text-foreground">
                 <User className="h-4 w-4" />
-                <span className="font-medium">{user.name}</span>
+                <span className="font-medium">{profile.full_name || user.email}</span>
               </div>
               <Button
-                onClick={onLogout}
+                onClick={signOut}
                 variant="outline"
                 size="sm"
-                className="text-gray-600 hover:text-gray-800"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <LogOut className="h-4 w-4 mr-2" />
                 Logout
@@ -156,15 +161,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }
       </header>
 
       {/* Admin Navigation */}
-      <nav className="bg-white border-b">
+      <nav className="bg-card border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex gap-8">
             <button
               onClick={() => setActiveTab('overview')}
               className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === 'overview'
-                  ? 'border-red-500 text-red-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
               Overview
@@ -173,8 +178,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }
               onClick={() => setActiveTab('tickets')}
               className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === 'tickets'
-                  ? 'border-red-500 text-red-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
               All Tickets
@@ -183,8 +188,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }
               onClick={() => setActiveTab('users')}
               className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === 'users'
-                  ? 'border-red-500 text-red-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
               User Management
@@ -264,7 +269,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <AlertCircle className="h-5 w-5 text-red-500" />
+                    <AlertCircle className="h-5 w-5 text-destructive" />
                     High Priority Tickets
                   </CardTitle>
                 </CardHeader>
@@ -281,17 +286,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-blue-500" />
+                    <Users className="h-5 w-5 text-primary" />
                     User Activity
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     {users.map((user) => (
-                      <div key={user.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div key={user.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                         <div>
-                          <p className="font-medium text-gray-900">{user.name}</p>
-                          <p className="text-sm text-gray-500">{user.email}</p>
+                          <p className="font-medium text-foreground">{user.name}</p>
+                          <p className="text-sm text-muted-foreground">{user.email}</p>
                         </div>
                         <Badge variant="outline">{user.ticketCount} tickets</Badge>
                       </div>
@@ -306,7 +311,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }
         {activeTab === 'tickets' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-900">All Tickets</h2>
+              <h2 className="text-2xl font-bold text-foreground">All Tickets</h2>
               <div className="flex gap-4">
                 <Select defaultValue="all">
                   <SelectTrigger className="w-40">
@@ -336,7 +341,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }
 
         {activeTab === 'users' && (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">User Management</h2>
+            <h2 className="text-2xl font-bold text-foreground">User Management</h2>
             <UserManagement users={users} />
           </div>
         )}
