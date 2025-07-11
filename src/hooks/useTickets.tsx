@@ -65,7 +65,17 @@ export function useTickets() {
         });
       } else {
         console.log('Tickets fetched successfully:', data);
-        setTickets(data || []);
+        // Transform the data to match our Ticket interface
+        const transformedTickets: Ticket[] = (data || []).map(ticket => ({
+          ...ticket,
+          profiles: Array.isArray(ticket.profiles) && ticket.profiles.length > 0 
+            ? ticket.profiles[0] 
+            : ticket.profiles || undefined,
+          assigned_agent: Array.isArray(ticket.assigned_agent) && ticket.assigned_agent.length > 0 
+            ? ticket.assigned_agent[0] 
+            : ticket.assigned_agent || undefined,
+        }));
+        setTickets(transformedTickets);
       }
     } catch (error: any) {
       console.error('Error fetching tickets:', error);
@@ -91,12 +101,11 @@ export function useTickets() {
       console.log('Creating ticket with data:', ticketData);
       const { data, error } = await supabase
         .from('tickets')
-        .insert([
-          {
-            ...ticketData,
-            user_id: user.id,
-          }
-        ])
+        .insert({
+          ...ticketData,
+          priority: ticketData.priority as 'low' | 'medium' | 'high' | 'urgent',
+          user_id: user.id,
+        })
         .select(`
           *,
           profiles:user_id (
@@ -117,13 +126,20 @@ export function useTickets() {
       }
 
       console.log('Ticket created successfully:', data);
-      setTickets(prev => [data, ...prev]);
+      // Transform the data to match our Ticket interface
+      const transformedTicket: Ticket = {
+        ...data,
+        profiles: Array.isArray(data.profiles) && data.profiles.length > 0 
+          ? data.profiles[0] 
+          : data.profiles || undefined,
+      };
+      setTickets(prev => [transformedTicket, ...prev]);
       toast({
         title: 'Success',
         description: 'Ticket created successfully',
       });
 
-      return { data, error: null };
+      return { data: transformedTicket, error: null };
     } catch (error: any) {
       console.error('Error creating ticket:', error);
       toast({
@@ -140,7 +156,7 @@ export function useTickets() {
       console.log('Updating ticket status:', { ticketId, status, assignedTo });
       
       const updates: any = { 
-        status,
+        status: status as 'open' | 'in-progress' | 'resolved' | 'closed',
         updated_at: new Date().toISOString()
       };
 
@@ -180,8 +196,19 @@ export function useTickets() {
       }
 
       console.log('Ticket updated successfully:', data);
+      // Transform the data to match our Ticket interface
+      const transformedTicket: Ticket = {
+        ...data,
+        profiles: Array.isArray(data.profiles) && data.profiles.length > 0 
+          ? data.profiles[0] 
+          : data.profiles || undefined,
+        assigned_agent: Array.isArray(data.assigned_agent) && data.assigned_agent.length > 0 
+          ? data.assigned_agent[0] 
+          : data.assigned_agent || undefined,
+      };
+      
       setTickets(prev => prev.map(ticket => 
-        ticket.id === ticketId ? data : ticket
+        ticket.id === ticketId ? transformedTicket : ticket
       ));
 
       toast({
