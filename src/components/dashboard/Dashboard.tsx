@@ -1,75 +1,35 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { TicketForm } from './TicketForm';
-import { TicketList } from './TicketList';
-import { Plus, Ticket, Clock, CheckCircle, AlertCircle, LogOut, User } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { EnhancedTicketForm } from './EnhancedTicketForm';
+import { EnhancedTicketList } from './EnhancedTicketList';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { Plus, Ticket, Clock, CheckCircle, AlertCircle, LogOut, User, Settings } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { useTickets } from '@/hooks/useTickets';
+import { Profile } from '@/hooks/useProfile';
 
 interface DashboardProps {
   user: any;
-  onLogout: () => void;
+  profile: Profile;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
-  const [tickets, setTickets] = useState([]);
+export const Dashboard: React.FC<DashboardProps> = ({ user, profile }) => {
   const [showTicketForm, setShowTicketForm] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  const { signOut } = useAuth();
+  const { tickets, loading } = useTickets();
 
-  // Mock tickets for demo
-  useEffect(() => {
-    const mockTickets = [
-      {
-        id: 'T001',
-        title: 'Password Reset Request',
-        description: 'Unable to access email account, need password reset',
-        priority: 'medium',
-        category: 'Account',
-        status: 'open',
-        createdAt: new Date(Date.now() - 86400000).toISOString(),
-        updatedAt: new Date(Date.now() - 3600000).toISOString(),
-        userId: user.id
-      },
-      {
-        id: 'T002',
-        title: 'Software Installation Issue',
-        description: 'Cannot install required software on workstation',
-        priority: 'high',
-        category: 'Software',
-        status: 'in-progress',
-        createdAt: new Date(Date.now() - 172800000).toISOString(),
-        updatedAt: new Date(Date.now() - 1800000).toISOString(),
-        userId: user.id
-      }
-    ];
-    setTickets(mockTickets);
-  }, [user.id]);
-
-  const handleCreateTicket = (ticketData) => {
-    const newTicket = {
-      id: `T${String(tickets.length + 1).padStart(3, '0')}`,
-      ...ticketData,
-      status: 'open',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      userId: user.id
-    };
-    
-    setTickets(prev => [newTicket, ...prev]);
-    setShowTicketForm(false);
-    toast({
-      title: "Ticket Created Successfully",
-      description: `Ticket ${newTicket.id} has been created and assigned.`,
-    });
-  };
+  // Filter tickets for current user
+  const userTickets = tickets.filter(ticket => ticket.user_id === user.id);
 
   const getTicketStats = () => {
-    const total = tickets.length;
-    const open = tickets.filter(t => t.status === 'open').length;
-    const inProgress = tickets.filter(t => t.status === 'in-progress').length;
-    const resolved = tickets.filter(t => t.status === 'resolved').length;
+    const total = userTickets.length;
+    const open = userTickets.filter(t => t.status === 'open').length;
+    const inProgress = userTickets.filter(t => t.status === 'in-progress').length;
+    const resolved = userTickets.filter(t => t.status === 'resolved').length;
     
     return { total, open, inProgress, resolved };
   };
@@ -77,28 +37,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const stats = getTicketStats();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-card shadow-sm border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <div className="bg-blue-600 w-8 h-8 rounded-lg flex items-center justify-center mr-3">
-                <Ticket className="h-5 w-5 text-white" />
+              <div className="bg-primary w-8 h-8 rounded-lg flex items-center justify-center mr-3">
+                <Ticket className="h-5 w-5 text-primary-foreground" />
               </div>
-              <h1 className="text-xl font-semibold text-gray-900">Service Desk</h1>
+              <h1 className="text-xl font-semibold text-foreground">Service Desk</h1>
             </div>
             
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-gray-700">
+              <ThemeToggle />
+              <div className="flex items-center gap-2 text-foreground">
                 <User className="h-4 w-4" />
-                <span className="font-medium">{user.name}</span>
+                <span className="font-medium">{profile.full_name}</span>
+                <Badge variant="secondary" className="text-xs">
+                  {profile.role}
+                </Badge>
               </div>
               <Button
-                onClick={onLogout}
+                onClick={signOut}
                 variant="outline"
                 size="sm"
-                className="text-gray-600 hover:text-gray-800"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <LogOut className="h-4 w-4 mr-2" />
                 Logout
@@ -109,15 +73,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       </header>
 
       {/* Navigation */}
-      <nav className="bg-white border-b">
+      <nav className="bg-card border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex gap-8">
             <button
               onClick={() => setActiveTab('overview')}
               className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === 'overview'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
               Overview
@@ -126,8 +90,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
               onClick={() => setActiveTab('tickets')}
               className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === 'tickets'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
               My Tickets
@@ -139,16 +103,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'overview' && (
           <div className="space-y-8">
+            {/* Welcome Section */}
+            <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg p-6">
+              <h2 className="text-2xl font-bold text-foreground mb-2">
+                Welcome back, {profile.full_name?.split(' ')[0]}!
+              </h2>
+              <p className="text-muted-foreground">
+                Manage your support tickets and track their progress
+              </p>
+            </div>
+
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-600">Total Tickets</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                      <p className="text-sm font-medium text-muted-foreground">Total Tickets</p>
+                      <p className="text-2xl font-bold text-foreground">{stats.total}</p>
                     </div>
-                    <Ticket className="h-8 w-8 text-blue-500" />
+                    <Ticket className="h-8 w-8 text-primary" />
                   </div>
                 </CardContent>
               </Card>
@@ -157,10 +131,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-600">Open</p>
-                      <p className="text-2xl font-bold text-red-600">{stats.open}</p>
+                      <p className="text-sm font-medium text-muted-foreground">Open</p>
+                      <p className="text-2xl font-bold text-destructive">{stats.open}</p>
                     </div>
-                    <AlertCircle className="h-8 w-8 text-red-500" />
+                    <AlertCircle className="h-8 w-8 text-destructive" />
                   </div>
                 </CardContent>
               </Card>
@@ -169,7 +143,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-600">In Progress</p>
+                      <p className="text-sm font-medium text-muted-foreground">In Progress</p>
                       <p className="text-2xl font-bold text-orange-600">{stats.inProgress}</p>
                     </div>
                     <Clock className="h-8 w-8 text-orange-500" />
@@ -181,7 +155,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-600">Resolved</p>
+                      <p className="text-sm font-medium text-muted-foreground">Resolved</p>
                       <p className="text-2xl font-bold text-green-600">{stats.resolved}</p>
                     </div>
                     <CheckCircle className="h-8 w-8 text-green-500" />
@@ -198,7 +172,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
               <CardContent>
                 <Button
                   onClick={() => setShowTicketForm(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Create New Ticket
@@ -212,7 +186,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                 <CardTitle>Recent Tickets</CardTitle>
               </CardHeader>
               <CardContent>
-                <TicketList tickets={tickets.slice(0, 5)} />
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : (
+                  <EnhancedTicketList tickets={userTickets.slice(0, 5)} />
+                )}
               </CardContent>
             </Card>
           </div>
@@ -221,10 +201,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
         {activeTab === 'tickets' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-900">My Tickets</h2>
+              <h2 className="text-2xl font-bold text-foreground">My Tickets</h2>
               <Button
                 onClick={() => setShowTicketForm(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Create Ticket
@@ -233,7 +213,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
             
             <Card>
               <CardContent className="p-6">
-                <TicketList tickets={tickets} />
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : (
+                  <EnhancedTicketList tickets={userTickets} />
+                )}
               </CardContent>
             </Card>
           </div>
@@ -242,12 +228,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
 
       {/* Ticket Form Modal */}
       {showTicketForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <TicketForm
-              onSubmit={handleCreateTicket}
-              onCancel={() => setShowTicketForm(false)}
-            />
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-background rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <EnhancedTicketForm onCancel={() => setShowTicketForm(false)} />
           </div>
         </div>
       )}
